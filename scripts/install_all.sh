@@ -2,13 +2,9 @@
 
 PLATFORM=axol
 DEFAULT_USER=respeaker
-if grep -q 'Raspberry Pi' /proc/device-tree/model; then
-    PLATFORM=pi
-    DEFAULT_USER=pi
-fi
-
 echo "The platform is $PLATFORM"
 
+# validate latest version
 if [[ $PLATFORM == axol ]] ; then
     R=`grep "Image" /etc/issue.net | awk '{print $4}'`
 
@@ -19,22 +15,21 @@ if [[ $PLATFORM == axol ]] ; then
     fi
 fi
 
+# validate user
 USER_ID=`id -u`
-
 if [[ $(whoami) != ${DEFAULT_USER} ]] ; then
     echo "Please run this script with user ${DEFAULT_USER}"
     exit 1
 fi
 
-## remove old installations
+# remove old installations
 if [[ -e /usr/local/bin/respeakerd ]]; then
     sudo rm -rf /usr/local/bin/respeakerd*
 fi
-
 sudo systemctl is-active -q respeakerd && sudo systemctl stop respeakerd
 
 
-## Install deps
+# Install deps
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
 #sudo apt-get update
 #sudo apt-get install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
@@ -43,10 +38,9 @@ sudo systemctl is-active -q respeakerd && sudo systemctl stop respeakerd
 #sudo pip install avs pixel_ring voice-engine pydbus pulsectl
 
 H="/home/${DEFAULT_USER}"
-
-#if [[ -e $H/.config/pulse/client.conf ]]; then
-#    rm -rf $H/.config/pulse/client.conf
-#fi
+if [[ -e $H/.config/pulse/client.conf ]]; then
+    rm -rf $H/.config/pulse/client.conf
+fi
 
 DAEMON_CONF=/etc/pulse/daemon.conf
 if [[ $PLATFORM == axol && `grep -c "default-sample-format = float32le" ${DAEMON_CONF}` == 0 ]] ; then
@@ -57,40 +51,26 @@ if [[ $PLATFORM == axol && `grep -c "default-sample-format = float32le" ${DAEMON
     pactl info
 fi
 
-if [[ $PLATFORM == pi ]] ; then
-    ## Check if PulseAudio has been configured right
-    FOUND=`pactl list sources | grep -c -E "Name:.*seeed-(8ch|source)"`
-    if [[ $FOUND == 0 ]]; then
-        echo "Please use \"sudo respeakerd-pi-tools setup-pulse\"  to configure PulseAudio first."
-        exit 1
-    fi
-
-    ## Select array type
-    respeakerd-pi-tools select-array
-fi
-
+# restart respeakerd
 sudo systemctl start respeakerd
-
 echo "The respeakerd services has been started."
 echo "You can view it's log via:"
 echo ""
 echo "sudo journalctl -f -u respeakerd"
 echo ""
 
-
+# get the latest code
 cd $H
-
 if [[ -e $H/respeakerd ]] ; then
     cd $H/respeakerd
     git pull
 else
-    git clone https://github.com/respeaker/respeakerd.git
+    git clone https://github.com/nextglory/x-iot-respeakerd.git
 fi
 
-
+# echo valuable information
 IP_ETH=`ip -f inet -br address|grep -v 'lo'|grep -v 'wlan'|awk '{print $3}'|sed -e 's/\/24//'`
 IP_WLAN=`ip -f inet -br address|grep -v 'lo'|grep 'wlan'|awk '{print $3}'|sed -e 's/\/24//'`
-
 echo "Before we can run the Alexa demo, we need you to do the authorization for the Alexa service."
 echo "We need you to VNC connect to the board. If you haven't practiced on VNC operation, please refer to:"
 if [[ $PLATFORM == axol ]] ; then
