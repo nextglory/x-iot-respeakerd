@@ -23,88 +23,95 @@ def main():
     en.dir(mraa.DIR_OUT)
     en.write(0)
 
-    src = RespeakerdSource()
+    srcRespkr = RespeakerdSource()
     alexa = Alexa()
     # ctl = VolumeCtl()
 
-    src.link(alexa)
-
+    srcRespkr.link(alexa)
     pixel_ring.think()
 
-    state = 'thinking'
-    last_dir = 0
+    xStat = 'thinking'
+    xDirect = 0
 
+    """
+    -------------------------------------
+    Alexa Events
+    -------------------------------------
+    """
     def on_ready():
-        global state
+        global xStat
         print("===== on_ready =====\r\n")
-        state = 'off'
+        xStat = 'off'
         pixel_ring.off()
-        src.on_cloud_ready()
+        srcRespkr.on_cloud_ready()
 
     def on_listening():
-        global state
-        global last_dir
+        global xStat
+        global xDirect
         print("===== on_listening =====\r\n")
-        if state != 'detected':
-            print('The last dir is {}'.format(last_dir))
-            pixel_ring.wakeup(last_dir)
-        state = 'listening'
+        if xStat != 'detected':
+            print('The last dir is {}'.format(xDirect))
+            pixel_ring.wakeup(xDirect)
+        xStat = 'listening'
         pixel_ring.listen()
 
     def on_speaking():
-        global state
+        global xStat
         print("===== on_speaking =====\r\n")
-        state = 'speaking'
-        src.on_speak()
+        xStat = 'speaking'
+        srcRespkr.on_speak()
         pixel_ring.speak()
 
     def on_thinking():
-        global state
+        global xStat
         print("===== on_thinking =====\r\n")
-        state = 'thinking'
-        src.stop_capture()
+        xStat = 'thinking'
+        srcRespkr.stop_capture()
         pixel_ring.think()
 
     def on_off():
-        global state
+        global xStat
         print("===== on_off =====\r\n")
-        state = 'off'
+        xStat = 'off'
         pixel_ring.off()
-
-    def on_detected(dir, index):
-        global state
-        global last_dir
-        logging.info('detected hotword:{} at {}`'.format(index, dir))
-        state = 'detected'
-        last_dir = (dir + 360 - 60)%360
-        alexa.listen()
-        pixel_ring.wakeup(last_dir)
-        
-
-    def on_vad():
-        # when someone is talking
-        print("."),
-        sys.stdout.flush()
-
-    def on_silence():
-        # when it is silent 
-        pass
 
     alexa.state_listener.on_listening = on_listening
     alexa.state_listener.on_thinking = on_thinking
     alexa.state_listener.on_speaking = on_speaking
     alexa.state_listener.on_finished = on_off
     alexa.state_listener.on_ready = on_ready
-
     # alexa.Speaker.CallbackSetVolume(ctl.setVolume)
     # alexa.Speaker.CallbackGetVolume(ctl.getVolume)
     # alexa.Speaker.CallbackSetMute(ctl.setMute)
 
-    src.set_callback(on_detected)
-    src.set_vad_callback(on_vad)
-    src.set_silence_callback(on_silence)
 
-    src.recursive_start()
+    """
+    -------------------------------------
+    Respeaker Events
+    -------------------------------------
+    """
+    def on_detected(dir, index):
+        global xStat
+        global xDirect
+        logging.info('detected hotword:{} at {}`'.format(index, dir))
+        xStat = 'detected'
+        xDirect = (dir + 360 - 60)%360
+        alexa.listen()
+        pixel_ring.wakeup(xDirect)
+
+    def on_vad():
+        # when someone is talking   
+        print(">"),
+        sys.stdout.flush()
+
+    def on_silence():
+        # when it is silent 
+        pass
+    
+    srcRespkr.set_callback(on_detected)
+    srcRespkr.set_vad_callback(on_vad)
+    srcRespkr.set_silence_callback(on_silence)
+    srcRespkr.recursive_start()
 
     is_quit = threading.Event()
     def signal_handler(signal, frame):
@@ -112,7 +119,6 @@ def main():
         is_quit.set()
 
     signal.signal(signal.SIGINT, signal_handler)
-
     while not is_quit.is_set():
         try:
             time.sleep(1)
@@ -120,8 +126,7 @@ def main():
             pass
         except NameError:
             pass
-
-    src.recursive_stop()
+    srcRespkr.recursive_stop()
     en.write(1)
 
 
