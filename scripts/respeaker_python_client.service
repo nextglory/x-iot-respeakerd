@@ -1,0 +1,12 @@
+[Unit]
+Description=ReSpeaker Python Client
+After=respeakerd.service
+
+[Service]
+User=respeaker
+Group=respeaker
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStart=/usr/local/bin/respeaker_python_client
+
+[Install]
+WantedBy=multi-user.target

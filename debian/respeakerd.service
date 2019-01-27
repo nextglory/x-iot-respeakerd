@@ -1,0 +1,13 @@
+[Unit]
+Description=ReSpeaker Server
+After=avahi-daemon.service network.target
+
+[Service]
+User=respeaker
+Group=respeaker
+LimitRTPRIO=99
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStart=/usr/bin/respeakerd_safe
+
+[Install]
+WantedBy=multi-user.target
